@@ -17,3 +17,10 @@ output "cluster_name" {
 output "cluster_endpoint" {
   value = module.eks.cluster_endpoint
 }
+
+output "cluster_autoscaler_role_arn" {
+  value = module.cluster_autoscaler_irsa.iam_role_arn
+}
+output "alb_controller_role_arn" {
+  value = module.load_balancer_controller_irsa.iam_role_arn
+}

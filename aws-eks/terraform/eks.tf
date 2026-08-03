@@ -34,6 +34,11 @@ module "eks" {
       min_size     = 1
       desired_size = 2
       max_size     = 3
+
+      autoscaling_group_tags = {
+        "k8s.io/cluster-autoscaler/enabled"                   = "true"
+        "k8s.io/cluster-autoscaler/kubernetes-multicloud-eks" = "owned"
+      }
     }
   }
 
