@@ -24,3 +24,7 @@ output "cluster_autoscaler_role_arn" {
 output "alb_controller_role_arn" {
   value = module.load_balancer_controller_irsa.iam_role_arn
 }
+
+output "eks_tester_readonly_role_arn" {
+  value = aws_iam_role.eks_tester_readonly.arn
+}
