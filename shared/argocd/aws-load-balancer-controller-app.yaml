@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://aws.github.io/eks-charts
+    chart: aws-load-balancer-controller
+    targetRevision: 3.5.0
+    helm:
+      parameters:
+        - name: clusterName
+          value: kubernetes-multicloud-eks
+        - name: region
+          value: us-east-1
+        - name: serviceAccount.create
+          value: "true"
+        - name: serviceAccount.name
+          value: aws-load-balancer-controller
+        - name: 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn'
+          value: arn:aws:iam::679346886253:role/kubernetes-multicloud-alb-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-autoscaler
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/autoscaler
+    chart: cluster-autoscaler
+    targetRevision: 9.59.0
+    helm:
+      parameters:
+        - name: autoDiscovery.clusterName
+          value: kubernetes-multicloud-eks
+        - name: awsRegion
+          value: us-east-1
+        - name: rbac.serviceAccount.name
+          value: cluster-autoscaler
+        - name: 'rbac.serviceAccount.annotations.eks\.amazonaws\.com/role-arn'
+          value: arn:aws:iam::679346886253:role/kubernetes-multicloud-cluster-autoscaler
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
