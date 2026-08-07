@@ -6,7 +6,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/inbound-cidrs: "SEU.IP.PUBLICO/32" # edite com seu IP atual (curl -s https://checkip.amazonaws.com) antes de aplicar
+    alb.ingress.kubernetes.io/inbound-cidrs: "179.125.79.251/32"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
 spec:
   ingressClassName: alb
