@@ -28,3 +28,11 @@ output "alb_controller_role_arn" {
 output "eks_tester_readonly_role_arn" {
   value = aws_iam_role.eks_tester_readonly.arn
 }
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.sample_app.repository_url
+}
+
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions.arn
+}
