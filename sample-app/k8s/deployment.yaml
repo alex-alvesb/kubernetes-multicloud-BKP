@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: sample-app
-          image: 679346886253.dkr.ecr.us-east-1.amazonaws.com/kubernetes-multicloud-sample-app:latest
+          image: 679346886253.dkr.ecr.us-east-1.amazonaws.com/kubernetes-multicloud-sample-app:1e2de9ad6808da7bdb0f20f83375f7232d17bc71
           ports:
             - containerPort: 80
           resources:
