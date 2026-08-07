@@ -1,6 +1,7 @@
 resource "aws_ecr_repository" "sample_app" {
   name                 = "kubernetes-multicloud-sample-app"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
