@@ -7,6 +7,7 @@ on:
       - 'sample-app/Dockerfile'
       - 'sample-app/index.html'
       - '.github/workflows/build-sample-app.yml'
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
