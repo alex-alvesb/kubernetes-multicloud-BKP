@@ -34,6 +34,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     authorized_ip_ranges = [var.allowed_public_cidr]
   }
 
+  web_app_routing {
+    dns_zone_ids = []
+  }
+
   tags = {
     Project     = "kubernetes-multicloud"
     Environment = "lab"
