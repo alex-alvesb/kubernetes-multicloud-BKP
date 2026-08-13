@@ -38,7 +38,8 @@ jobs:
           docker push $ECR_REPOSITORY:${{ github.sha }}
 
       - name: Update image tag in manifest
-        run: sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" aws-eks/k8s/sample-app/deployment.yaml
+        run: |
+          sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" aws-eks/k8s/sample-app/deployment.yaml
 
       - name: Commit and push
         run: |
@@ -73,7 +74,8 @@ jobs:
           docker push $ACR_REPOSITORY:${{ github.sha }}
 
       - name: Update image tag in manifest
-        run: sed -i "s|image: .*|image: $ACR_REPOSITORY:${{ github.sha }}|" azure-aks/k8s/sample-app/deployment.yaml
+        run: |
+          sed -i "s|image: .*|image: $ACR_REPOSITORY:${{ github.sha }}|" azure-aks/k8s/sample-app/deployment.yaml
 
       - name: Commit and push
         run: |
