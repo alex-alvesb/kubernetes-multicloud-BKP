@@ -16,6 +16,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: 679346886253.dkr.ecr.us-east-1.amazonaws.com/kubernetes-multicloud-sample-app
+  ACR_REPOSITORY: acrkubmulticloud4dc010b6.azurecr.io/kubernetes-multicloud-sample-app
 
 jobs:
   build-and-deploy:
@@ -24,6 +25,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build image
+        run: docker build -t sample-app:${{ github.sha }} sample-app/
+
+      # ---- AWS ----
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,19 +38,37 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Push to ECR
         run: |
-          docker build -t $ECR_REPOSITORY:${{ github.sha }} sample-app/
+          docker tag sample-app:${{ github.sha }} $ECR_REPOSITORY:${{ github.sha }}
           docker push $ECR_REPOSITORY:${{ github.sha }}
 
-      - name: Update image tag in manifest
-        run: |
-          sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" sample-app/k8s/deployment.yaml
+      # ---- Azure ----
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: 29df9fdf-1421-44b3-aeed-e8885ee59547
+          tenant-id: 06094a4e-520a-4f9b-8d49-7a81ea37c2e3
+          subscription-id: 4dc010b6-26c3-427d-80a3-af1df4fccd6c
 
-      - name: Commit and push updated manifest
+      - name: Login to ACR
+        run: az acr login --name acrkubmulticloud4dc010b6
+
+      - name: Push to ACR
+        run: |
+          docker tag sample-app:${{ github.sha }} $ACR_REPOSITORY:${{ github.sha }}
+          docker push $ACR_REPOSITORY:${{ github.sha }}
+
+      # ---- Atualiza manifests dos dois clusters ----
+      - name: Update image tags in manifests
+        run: |
+          sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" aws-eks/k8s/sample-app/deployment.yaml
+          sed -i "s|image: .*|image: $ACR_REPOSITORY:${{ github.sha }}|" azure-aks/k8s/sample-app/deployment.yaml
+
+      - name: Commit and push updated manifests
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add sample-app/k8s/deployment.yaml
+          git add aws-eks/k8s/sample-app/deployment.yaml azure-aks/k8s/sample-app/deployment.yaml
           git commit -m "Deploy sample-app: ${{ github.sha }} [skip ci]"
           git push
