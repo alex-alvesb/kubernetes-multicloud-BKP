@@ -13,22 +13,16 @@ permissions:
   id-token: write
   contents: write
 
-env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: 679346886253.dkr.ecr.us-east-1.amazonaws.com/kubernetes-multicloud-sample-app
-  ACR_REPOSITORY: acrkubmulticloud4dc010b6.azurecr.io/kubernetes-multicloud-sample-app
-
 jobs:
-  build-and-deploy:
+  deploy-aws:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      ECR_REPOSITORY: 679346886253.dkr.ecr.us-east-1.amazonaws.com/kubernetes-multicloud-sample-app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t sample-app:${{ github.sha }} sample-app/
-
-      # ---- AWS ----
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -38,12 +32,31 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push to ECR
+      - name: Build and push to ECR
         run: |
-          docker tag sample-app:${{ github.sha }} $ECR_REPOSITORY:${{ github.sha }}
+          docker build -t $ECR_REPOSITORY:${{ github.sha }} sample-app/
           docker push $ECR_REPOSITORY:${{ github.sha }}
 
-      # ---- Azure ----
+      - name: Update image tag in manifest
+        run: sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" aws-eks/k8s/sample-app/deployment.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          git add aws-eks/k8s/sample-app/deployment.yaml
+          git commit -m "Deploy sample-app (AWS): ${{ github.sha }} [skip ci]"
+          git push
+
+  deploy-azure:
+    runs-on: ubuntu-latest
+    env:
+      ACR_REPOSITORY: acrkubmulticloud4dc010b6.azurecr.io/kubernetes-multicloud-sample-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
@@ -54,21 +67,19 @@ jobs:
       - name: Login to ACR
         run: az acr login --name acrkubmulticloud4dc010b6
 
-      - name: Push to ACR
+      - name: Build and push to ACR
         run: |
-          docker tag sample-app:${{ github.sha }} $ACR_REPOSITORY:${{ github.sha }}
+          docker build -t $ACR_REPOSITORY:${{ github.sha }} sample-app/
           docker push $ACR_REPOSITORY:${{ github.sha }}
 
-      # ---- Atualiza manifests dos dois clusters ----
-      - name: Update image tags in manifests
-        run: |
-          sed -i "s|image: .*|image: $ECR_REPOSITORY:${{ github.sha }}|" aws-eks/k8s/sample-app/deployment.yaml
-          sed -i "s|image: .*|image: $ACR_REPOSITORY:${{ github.sha }}|" azure-aks/k8s/sample-app/deployment.yaml
+      - name: Update image tag in manifest
+        run: sed -i "s|image: .*|image: $ACR_REPOSITORY:${{ github.sha }}|" azure-aks/k8s/sample-app/deployment.yaml
 
-      - name: Commit and push updated manifests
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add aws-eks/k8s/sample-app/deployment.yaml azure-aks/k8s/sample-app/deployment.yaml
-          git commit -m "Deploy sample-app: ${{ github.sha }} [skip ci]"
+          git pull --rebase origin main
+          git add azure-aks/k8s/sample-app/deployment.yaml
+          git commit -m "Deploy sample-app (Azure): ${{ github.sha }} [skip ci]"
           git push
