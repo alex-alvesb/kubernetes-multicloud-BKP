@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/alex-alvesb/kubernetes-multicloud-BKP.git
     targetRevision: main
-    path: aws-eks/k8s
+    path: aws-eks/k8s/monitoring
     directory:
       recurse: true
   destination:
