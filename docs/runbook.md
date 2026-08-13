@@ -1,6 +1,6 @@
-# Runbook — Operação do Cluster AWS EKS
+# Runbook — Operação dos Clusters (AWS EKS + Azure AKS)
 
-## Início do dia
+## AWS EKS — Início do dia
 
 1. Checar IP público atual: `curl -s https://checkip.amazonaws.com`
 2. Atualizar `aws-eks/terraform/terraform.tfvars` com o IP (se mudou)
@@ -22,13 +22,16 @@
 7. Subir tudo o resto via GitOps:
    ```bash
    kubectl apply -f shared/argocd/root-app.yaml
+   kubectl apply -f aws-eks/argocd/aws-load-balancer-controller-app.yaml
+   kubectl apply -f aws-eks/argocd/cluster-autoscaler-app.yaml
+   kubectl apply -f aws-eks/argocd/metrics-server-app.yaml
    kubectl apply -f aws-eks/argocd/aws-monitoring-app.yaml
    kubectl apply -f aws-eks/argocd/sample-app-app.yaml
    ```
 8. Rebuildar a imagem da sample-app (o ECR é destruído todo dia, a tag antiga não existe mais):
    vai em Actions → **Build and Deploy Sample App** → **Run workflow**
 
-## Fim do dia
+## AWS EKS — Fim do dia
 
 **Importante: nunca rodar `terraform destroy` direto.** Primeiro:
 
@@ -47,28 +50,83 @@
    terraform destroy   # sem pressa, sem timeout curto
    ```
 
-## Lições aprendidas (bugs reais que já pegamos)
+## Azure AKS — Início do dia
+
+1. Checar IP público atual
+2. Atualizar `azure-aks/terraform/terraform.tfvars` com o IP (se mudou)
+3. Atualizar `azure-aks/k8s/monitoring/ingress-grafana.yaml` com o IP, **commitar e dar push**
+4. Confirmar login do Azure CLI: `az account show`. Se expirou, usar `az login` **sem**
+   `--use-device-code` (ver "Lições aprendidas" — o device code costuma ser bloqueado)
+5. `cd azure-aks/terraform && terraform apply` — geralmente mais rápido que o EKS (~5-10 min),
+   mas ainda assim sem timeout curto
+6. Reconectar kubectl:
+   ```bash
+   az aks get-credentials --resource-group rg-kubernetes-multicloud \
+     --name aks-kubernetes-multicloud --overwrite-existing
+   ```
+7. Instalar ArgoCD (bootstrap manual):
+   ```bash
+   helm install argocd argo/argo-cd -n argocd --create-namespace
+   ```
+8. Subir tudo o resto via GitOps:
+   ```bash
+   kubectl apply -f shared/argocd/root-app.yaml
+   kubectl apply -f azure-aks/argocd/azure-monitoring-app.yaml
+   ```
+   (metrics-server **não** precisa ser instalado — já vem nativo no AKS)
+
+## Azure AKS — Fim do dia
+
+Mais simples que a AWS: o Azure limpa automaticamente o Load Balancer/IP público do
+Ingress junto com o cluster (fica num Resource Group interno `MC_*` que o AKS gerencia
+sozinho). Não precisa apagar o Ingress manualmente antes:
+```bash
+cd azure-aks/terraform
+terraform destroy   # sem pressa, sem timeout curto
+```
+
+## Lições aprendidas — AWS
 
 - **ALB/ENI/Security Group órfãos no destroy**: o AWS Load Balancer Controller cria recursos
   fora do controle do Terraform. Se o cluster morre antes dele limpar, a VPC/subnets ficam
-  presas. Sempre apagar o Ingress antes do destroy (ver "Fim do dia").
+  presas. Sempre apagar o Ingress antes do destroy.
 - **ArgoCD não faz cascade delete por padrão**: sem o finalizer
   `resources-finalizer.argocd.argoproj.io` na Application, deletar a Application não apaga
-  os recursos que ela gerenciava — eles ficam órfãos no cluster. Todas as nossas Applications
-  já têm esse finalizer.
+  os recursos que ela gerenciava. Todas as nossas Applications já têm esse finalizer.
 - **CRDs do kube-prometheus-stack são grandes demais pro client-side apply**: excedem o limite
   de 256KB da annotation `last-applied-configuration`. Solução: `ServerSideApply=true` no
   `syncOptions` da Application.
 - **Prometheus Operator não detecta CRDs instaladas depois dele iniciar**: se isso acontecer,
   `kubectl rollout restart deployment kube-prometheus-stack-operator -n monitoring`.
 - **`sub` claim do OIDC do GitHub mudou de formato**: agora inclui IDs imutáveis
-  (`repo:owner@id/repo@id:ref:...`), não só nomes. Sempre conferir o claim real (decodificando
-  o JWT) em vez de assumir o formato documentado antigamente.
-- **ECR não deixa apagar repositório com imagens**: como esse repo é recriado todo dia,
-  `force_delete = true` é necessário no `aws_ecr_repository`.
+  (`repo:owner@id/repo@id:ref:...`), não só nomes.
+- **ECR não deixa apagar repositório com imagens**: `force_delete = true` é necessário no
+  `aws_ecr_repository`, já que esse repo é recriado todo dia.
 - **Timeouts curtos em operações de cluster são perigosos**: um `apply`/`destroy` interrompido
-  no meio pode deixar recursos reais na AWS que o Terraform não sabe mais que existem
-  (aconteceu com um cluster EKS órfão). Sempre dar tempo generoso (15-20 min) pra essas operações.
+  no meio pode deixar recursos reais na nuvem que o Terraform não sabe mais que existem
+  (aconteceu com um cluster EKS órfão). Sempre dar tempo generoso (15-20 min).
 - **IP doméstico muda com frequência**: tanto o `terraform.tfvars` quanto o
-  `ingress-grafana.yaml` (esse via commit, por causa do GitOps) precisam ser atualizados
-  no início do dia.
+  `ingress-grafana.yaml` (via commit, por causa do GitOps) precisam ser atualizados no
+  início do dia.
+
+## Lições aprendidas — Azure
+
+- **Resource Providers precisam ser registrados manualmente** na primeira vez que a
+  subscription usa um serviço novo (`Microsoft.Network`, `Microsoft.ContainerService`, etc):
+  `az provider register --namespace <nome>`.
+- **`azurerm` provider v5.x exige o bloco `node_provisioning_profile`** no
+  `azurerm_kubernetes_cluster`, mesmo usando node pools tradicionais — declarar
+  `mode = "Manual"`.
+- **Subscriptions trial têm quota zero pra várias famílias de VM** (ex: série `B` antiga).
+  Conferir com `az vm list-usage --location <região>` antes de escolher o `vm_size`.
+- **`az login --use-device-code` pode ser bloqueado pela política "Security Defaults"**
+  do tenant (`AADSTS530035`) — esse fluxo tem sido alvo de phishing e vem sendo restringido.
+  Usar `az login` padrão (redirect via `localhost`) resolve.
+- **`web_app_routing` exige `dns_zone_ids`** (lista) mesmo sem domínio próprio — usar `[]`.
+- **Restrição de IP no Ingress usa outra anotação**: `nginx.ingress.kubernetes.io/whitelist-source-range`
+  (não `inbound-cidrs`, que é específico do ALB Controller da AWS).
+- **`shared/argocd/` deve conter só o que é realmente cloud-agnostic**: componentes que
+  referenciam IAM Role da AWS (Cluster Autoscaler, ALB Controller) ou que são redundantes
+  numa cloud (metrics-server no AKS) devem morar na pasta específica da cloud
+  (`aws-eks/argocd/`), não em `shared/argocd/` — senão o `root-app` de uma cloud tenta
+  instalar componente da outra.
