@@ -149,3 +149,22 @@ terraform destroy   # sem pressa, sem timeout curto
 - **Um job só, sequencial, pra duas clouds é frágil**: se uma infraestrutura estiver fora do
   ar (ex: AWS destruída), isso não deveria impedir o deploy pra outra cloud que está de pé.
   Jobs paralelos independentes (`deploy-aws`, `deploy-azure`) resolvem isso.
+
+## Lições aprendidas — GitOps (ArgoCD) e HPA
+
+- **`directory.recurse: true` num path "pai" pode varrer pastas de outras Applications sem
+  querer**: a `aws-monitoring-ingress`/`azure-monitoring-ingress` apontavam pra
+  `aws-eks/k8s`/`azure-aks/k8s` (a pasta toda) em vez de `aws-eks/k8s/monitoring` — isso
+  fez elas "adotarem" também o `sample-app/`, brigando com a Application `sample-app` pelo
+  mesmo Deployment/Service/HPA (aparece como `SharedResourceWarning` nas conditions da
+  Application). Sintoma: recursos oscilando entre estados sem motivo aparente. Sempre
+  escopar o `path` na pasta mais específica possível, nunca num diretório pai compartilhado.
+- **HPA e `selfHeal` do ArgoCD brigam pelo campo `replicas`**: se o manifest do Deployment
+  declara `replicas: N` e tem um HPA ativo, o ArgoCD (com `selfHeal: true`) tenta reverter
+  pro valor do Git toda vez que o HPA muda o valor real — um looping de scale up/down.
+  Resolvido com `ignoreDifferences` na Application, apontando pro campo `/spec/replicas`
+  do `Deployment`, deixando o HPA ser o único dono desse campo.
+- **Teste de carga real (HPA)**: com CPU acima do limiar (50% do request), o HPA escalou de
+  1 para 2 réplicas em ~22s (pod `Running` já servindo tráfego). Após a carga cessar, o
+  scale-down aconteceu depois da janela de estabilização padrão (~5 min) — comportamento
+  esperado, evita "flapping" por uma flutuação passageira de CPU.
