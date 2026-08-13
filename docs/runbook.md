@@ -130,3 +130,22 @@ terraform destroy   # sem pressa, sem timeout curto
   numa cloud (metrics-server no AKS) devem morar na pasta específica da cloud
   (`aws-eks/argocd/`), não em `shared/argocd/` — senão o `root-app` de uma cloud tenta
   instalar componente da outra.
+
+## Lições aprendidas — CI/CD (GitHub Actions, geral — não específico de cloud)
+
+- **CRLF quebra o parser do GitHub Actions**: se o arquivo `.yml` for salvo com quebra de
+  linha estilo Windows, o workflow falha silenciosamente ("0 jobs", nome do workflow cai
+  pro caminho do arquivo). Resolvido com `.gitattributes` (`eol=lf`) forçando LF sempre.
+- **`run:` de uma linha só com `:` dentro do valor quebra o YAML**: um `:` seguido de espaço
+  (`"s|image: .*|image: ..."`) é interpretado como início de um mapeamento YAML se não
+  estiver dentro de um bloco `|`. Sempre que o comando shell tiver `: ` no meio, usar bloco
+  multi-linha (`run: |`), nunca linha única.
+- **`actions/checkout` deixa HEAD desanexado**: um `git push` sem destino explícito falha
+  de forma ambígua. Usar sempre `git push origin HEAD:main`.
+- **Ordem importa: commit antes do `pull --rebase`**: se o arquivo já foi alterado por um
+  step anterior (ex: `sed`) e ainda não foi commitado, `git pull --rebase` falha
+  (`cannot pull with rebase: you have unstaged changes`). Sempre `add` + `commit` primeiro,
+  `pull --rebase` depois, `push` por último.
+- **Um job só, sequencial, pra duas clouds é frágil**: se uma infraestrutura estiver fora do
+  ar (ex: AWS destruída), isso não deveria impedir o deploy pra outra cloud que está de pé.
+  Jobs paralelos independentes (`deploy-aws`, `deploy-azure`) resolvem isso.
