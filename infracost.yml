@@ -1,0 +1,10 @@
+version: 0.1
+projects:
+  - path: aws-eks/terraform
+    name: aws-eks-terraform
+    terraform_var_files:
+      - terraform.tfvars.example
+  - path: azure-aks/terraform
+    name: azure-aks-terraform
+    terraform_var_files:
+      - terraform.tfvars.example

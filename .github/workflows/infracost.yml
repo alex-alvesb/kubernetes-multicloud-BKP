@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'aws-eks/terraform/**'
+      - 'azure-aks/terraform/**'
+      - 'infracost.yml'
 
 permissions:
   contents: read
@@ -25,8 +27,7 @@ jobs:
 
       - name: Generate baseline cost estimate
         run: |
-          infracost breakdown --path=aws-eks/terraform \
-            --terraform-var-file=terraform.tfvars.example \
+          infracost breakdown --config-file=infracost.yml \
             --format=json \
             --out-file=/tmp/infracost-base.json
 
@@ -35,8 +36,7 @@ jobs:
 
       - name: Generate cost diff
         run: |
-          infracost diff --path=aws-eks/terraform \
-            --terraform-var-file=terraform.tfvars.example \
+          infracost diff --config-file=infracost.yml \
             --compare-to=/tmp/infracost-base.json \
             --format=json \
             --out-file=/tmp/infracost.json
