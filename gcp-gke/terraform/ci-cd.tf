@@ -46,3 +46,12 @@ resource "google_service_account_iam_member" "github_actions_wif" {
   role                = "roles/iam.workloadIdentityUser"
   member              = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/alex-alvesb/kubernetes-multicloud-BKP"
 }
+
+data "google_compute_default_service_account" "default" {
+}
+
+resource "google_project_iam_member" "gke_nodes_ar_reader" {
+  project = "kubernetes-multicloud"
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}
