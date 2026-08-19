@@ -57,3 +57,23 @@ Diferente da AWS, não vou cravar um número aqui — como já temos o **Infraco
 ## Lição de custo do dia
 
 A escolha do `vm_size` não foi puramente uma decisão de custo — foi limitada pela **quota da subscription trial** (várias famílias de VM, incluinda as mais baratas, vinham com quota zero por padrão). Isso é uma nuance real do FinOps em ambientes novos: antes de desenhar a arquitetura pensando em custo, é preciso confirmar o que a conta realmente permite provisionar.
+
+## GCP GKE — Decisões de custo x produção real
+
+| Decisão | O que fizemos | O que produção real faria | Observação |
+|---|---|---|---|
+| Nodes públicos, sem Cloud NAT | IP público direto nos nodes | Nodes privados + Cloud Router/Cloud NAT (pago) | Mesmo trade-off do NAT da AWS, só que do lado oposto — GCP também cobra por NAT explícito |
+| Tamanho da VM | `e2-standard-4` (2 nodes) | Dimensionado por carga real | Não foi só custo — `e2-medium` não tinha CPU alocável suficiente pro Calico + monitoring juntos (ver runbook) |
+| Cluster zonal (não regional) | `location = "us-central1-a"` | Cluster regional (control plane replicado em 3 zonas) | Zonal é mais barato e simples; regional é o padrão de alta disponibilidade real |
+| Ingress | Controller nativo do GKE (grátis, embutido) | Idem, possivelmente com Cloud Armor (WAF, pago) | Sem allowlist de IP na borda — só autenticação do Grafana |
+| Spot VMs | `spot = true` no node pool | On-Demand ou Committed Use Discounts | Mesma economia que já usamos na AWS |
+
+## Lição de custo do dia (GCP)
+
+A CPU "alocável" de uma VM é sempre menor que a nominal — o Kubernetes reserva uma fatia pro
+próprio sistema operacional e componentes do cluster (`kubelet`, container runtime, e no
+nosso caso o Calico do NetworkPolicy). Em VMs pequenas essa reserva consome uma fração
+desproporcional (quase metade dos 2 vCPU do `e2-medium` já não estava disponível pro
+workload). **Dimensionar pelo "vCPU nominal" sem checar o alocável real é um erro comum** —
+vale sempre rodar `kubectl describe nodes` e olhar `Allocatable` antes de assumir que uma VM
+pequena "deveria" caber determinada carga.

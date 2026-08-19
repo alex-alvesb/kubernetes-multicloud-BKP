@@ -168,3 +168,69 @@ terraform destroy   # sem pressa, sem timeout curto
   1 para 2 réplicas em ~22s (pod `Running` já servindo tráfego). Após a carga cessar, o
   scale-down aconteceu depois da janela de estabilização padrão (~5 min) — comportamento
   esperado, evita "flapping" por uma flutuação passageira de CPU.
+
+## GCP GKE — Início do dia
+
+1. Checar IP público atual
+2. Atualizar `gcp-gke/terraform/terraform.tfvars` com o IP (se mudou)
+3. Confirmar login: `gcloud auth list`. Se expirou, `gcloud auth login` (mesmo truque do
+   Azure — deixa tentar abrir navegador, copia o link manualmente se falhar)
+4. `cd gcp-gke/terraform && terraform apply` — sem timeout curto
+5. Reconectar kubectl: `gcloud container clusters get-credentials gke-kubernetes-multicloud
+   --location=us-central1-a --project=kubernetes-multicloud`
+6. Reaplicar `shared/k8s/` (namespaces, RBAC, network policies) — **o cluster GKE tende a
+   ser recriado por inteiro a cada apply** (ver lições abaixo), então isso quase sempre é
+   necessário de novo, diferente da AWS/Azure onde só recriamos o cluster no dia seguinte
+7. Reinstalar `kube-prometheus-stack` via Helm com o mesmo values file
+8. Aplicar `gcp-gke/k8s/monitoring/ingress-grafana.yaml` e rodar
+   `kubectl annotate service kube-prometheus-stack-grafana -n monitoring
+   'cloud.google.com/neg={"ingress": true}' --overwrite` (necessário toda vez que a
+   instalação do Helm é refeita)
+
+## GCP GKE — Fim do dia
+
+Sem Ingress complexo pra limpar antes (Load Balancer do GCP se desprovisiona junto com o
+Ingress/cluster sem o mesmo drama do ALB da AWS). Só:
+```bash
+cd gcp-gke/terraform
+terraform destroy   # sem pressa, sem timeout curto
+```
+
+## Lições aprendidas — GCP
+
+- **Billing precisa ser vinculado manualmente ao Project** antes de criar qualquer coisa
+  (`gcloud billing projects describe <project>` mostra `billingEnabled: false` se faltar).
+- **`gcloud auth login` autentica o CLI; `gcloud auth application-default login` autentica
+  o Terraform** — são credenciais separadas, os dois logins são necessários.
+- **Comandos `gcloud`/`gsutil` instalados via script não entram no `PATH` de sessões novas**
+  automaticamente — precisa adicionar ao `.bashrc` manualmente
+  (`export PATH="$HOME/google-cloud-sdk/bin:$PATH"`).
+- **Quota de disco (`SSD_TOTAL_GB`) e de endereços IP (`IN_USE_ADDRESSES`) são bem
+  limitadas em projetos trial** (250GB e 4 endereços, nesse caso). Reduzir `disk_size_gb`
+  dos nodes e conferir `gcloud compute regions describe <região>` antes de escalar.
+- **`location` regional (`us-central1`) faz o GKE replicar o node pool em várias zonas
+  automaticamente** — `node_count = 2` numa região pode virar 4+ instâncias reais. Usar uma
+  zona específica (`us-central1-a`) pra ter controle exato da contagem de nodes, além de
+  ser um cluster "zonal" mais barato que um "regional".
+- **`deletion_protection` vem ligado por padrão em clusters GKE recentes** — sem
+  `deletion_protection = false` explícito, o `terraform destroy` diário simplesmente falha.
+- **VMs pequenas (`e2-medium`, 2 vCPU) reservam uma fatia desproporcional de CPU pra
+  overhead de sistema** (só ~940m de 2000m ficam alocáveis) — com Calico rodando (NetworkPolicy),
+  sobra pouquíssimo espaço pro workload real. Aumentar o *tamanho* da VM (`e2-standard-4`)
+  ajuda mais que aumentar a *quantidade* de nodes pequenos, já que cada node novo carrega
+  seu próprio overhead de sistema/Calico.
+- **Mudar `node_count` ou `machine_type` no node pool tende a recriar o cluster inteiro**,
+  não só o node pool — isso apaga namespaces, RBAC e releases do Helm. Diferente do
+  EKS/AKS, onde só o node pool em si é afetado. Planeje o `terraform apply` do dia
+  assumindo que pode ser preciso reaplicar tudo de novo, não só reconectar o `kubectl`.
+- **`gke-gcloud-auth-plugin` precisa ser instalado à parte** (`gcloud components install
+  gke-gcloud-auth-plugin`) — sem ele, o `kubectl` não consegue autenticar no GKE.
+- **O Ingress nativo do GKE (`kubernetes.io/ingress.class: gce`) exige Service tipo
+  `NodePort`/`LoadBalancer`, ou a anotação de NEG** (`cloud.google.com/neg: '{"ingress":
+  true}'`) pra funcionar com `ClusterIP` — sem isso, o Ingress fica preso em
+  "Translation failed". O Load Balancer do GCP também demora mais pra provisionar
+  (5-10 min) que o ALB da AWS ou o NGINX do Azure.
+- **Não existe (de forma simples) uma anotação de allowlist de IP no Ingress nativo do
+  GKE** — precisaria de Cloud Armor (mais complexo). Trade-off aceito: Grafana fica
+  protegido só pela própria autenticação, sem restrição de IP na borda, diferente de AWS
+  e Azure.
