@@ -5,6 +5,7 @@ on:
     paths:
       - 'aws-eks/terraform/**'
       - 'azure-aks/terraform/**'
+      - 'gcp-gke/terraform/**'
       - 'infracost.yml'
 
 permissions:

@@ -85,3 +85,38 @@ jobs:
           git commit -m "Deploy sample-app (Azure): ${{ github.sha }} [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
+
+  deploy-gcp:
+    runs-on: ubuntu-latest
+    env:
+      GAR_REPOSITORY: us-central1-docker.pkg.dev/kubernetes-multicloud/kubernetes-multicloud-sample-app/sample-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/425523681408/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: github-actions-ci@kubernetes-multicloud.iam.gserviceaccount.com
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build and push to Artifact Registry
+        run: |
+          docker build -t $GAR_REPOSITORY:${{ github.sha }} sample-app/
+          docker push $GAR_REPOSITORY:${{ github.sha }}
+
+      - name: Update image tag in manifest
+        run: |
+          sed -i "s|image: .*|image: $GAR_REPOSITORY:${{ github.sha }}|" gcp-gke/k8s/sample-app/deployment.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gcp-gke/k8s/sample-app/deployment.yaml
+          git commit -m "Deploy sample-app (GCP): ${{ github.sha }} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
