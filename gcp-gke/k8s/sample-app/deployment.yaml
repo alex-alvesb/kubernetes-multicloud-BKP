@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: sample-app
-          image: us-central1-docker.pkg.dev/kubernetes-multicloud/kubernetes-multicloud-sample-app/sample-app:latest
+          image: us-central1-docker.pkg.dev/kubernetes-multicloud/kubernetes-multicloud-sample-app/sample-app:4f91453f4b438d32f8c30a05c550e104e1f44087
           ports:
             - containerPort: 80
           resources:
