@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: sample-app
-          image: acrkubmulticloud4dc010b6.azurecr.io/kubernetes-multicloud-sample-app:e47b2a0eaadda0d69ea9c5af401a606ee4dfc2cb
+          image: acrkubmulticloud4dc010b6.azurecr.io/kubernetes-multicloud-sample-app:d9134c8d02a3445bec367a2b1a9283c04cf1eff2
           ports:
             - containerPort: 80
           resources:
