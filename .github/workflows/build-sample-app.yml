@@ -1,4 +1,4 @@
-name: Build and Deploy Sample App
+name: Multicloud Deploy Pipeline
 
 on:
   push:
