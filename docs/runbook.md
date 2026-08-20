@@ -234,3 +234,23 @@ terraform destroy   # sem pressa, sem timeout curto
   GKE** — precisaria de Cloud Armor (mais complexo). Trade-off aceito: Grafana fica
   protegido só pela própria autenticação, sem restrição de IP na borda, diferente de AWS
   e Azure.
+
+## Lições aprendidas — CI/CD multicloud (as 3 clouds juntas)
+
+- **O `client-id` da Managed Identity do Azure muda a cada `terraform destroy`/`apply`**
+  (é um GUID novo do recurso recriado) — diferente da AWS (ARN fixo, por nome) e do GCP
+  (WIF provider com nome fixo, sobrevive à recriação). Antes de rodar o workflow depois de
+  recriar o Azure, atualizar o `client-id` no `.github/workflows/build-sample-app.yml` com
+  `az identity show --resource-group rg-kubernetes-multicloud --name id-github-actions
+  --query clientId -o tsv`, commitar e dar push.
+- **Workload Identity Pool/Provider do GCP são "soft-deleted"** — ficam reservados por até
+  30 dias após `terraform destroy`, e recriar com o mesmo nome dá erro 409 "already exists".
+  Resolvido com `gcloud iam workload-identity-pools undelete` (e o mesmo comando com
+  `providers undelete` pro provider), seguido de `terraform import` dos dois recursos de
+  volta pro state antes de reaplicar.
+- **Jobs paralelos commitando no mesmo repositório colidem (`fetch first` rejected)**:
+  quando `deploy-aws`/`deploy-azure`/`deploy-gcp` rodam ao mesmo tempo, cada um faz
+  `git pull --rebase` + `git push`, e é comum um deles pegar o repositório "desatualizado"
+  bem no instante entre o pull e o push do outro job. Resolvido com um loop de retry
+  (`git pull --rebase && git push || sleep && repete`, até 5 tentativas) em vez de uma
+  tentativa única.
