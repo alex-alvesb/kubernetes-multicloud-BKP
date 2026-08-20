@@ -47,8 +47,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add aws-eks/k8s/sample-app/deployment.yaml
           git commit -m "Deploy sample-app (AWS): ${{ github.sha }} [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            sleep $((RANDOM % 5 + 1))
+          done
 
   deploy-azure:
     runs-on: ubuntu-latest
@@ -61,7 +63,7 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: 29df9fdf-1421-44b3-aeed-e8885ee59547
+          client-id: 6a96f0ec-3ec3-47f1-a82b-7ad1e44cb340
           tenant-id: 06094a4e-520a-4f9b-8d49-7a81ea37c2e3
           subscription-id: 4dc010b6-26c3-427d-80a3-af1df4fccd6c
 
@@ -83,8 +85,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add azure-aks/k8s/sample-app/deployment.yaml
           git commit -m "Deploy sample-app (Azure): ${{ github.sha }} [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            sleep $((RANDOM % 5 + 1))
+          done
 
   deploy-gcp:
     runs-on: ubuntu-latest
@@ -118,5 +122,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add gcp-gke/k8s/sample-app/deployment.yaml
           git commit -m "Deploy sample-app (GCP): ${{ github.sha }} [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            sleep $((RANDOM % 5 + 1))
+          done
