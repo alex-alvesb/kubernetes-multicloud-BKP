@@ -4,7 +4,7 @@ metadata:
   name: grafana
   namespace: monitoring
   annotations:
-    nginx.ingress.kubernetes.io/whitelist-source-range: "179.125.91.91/32"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "179.125.87.248/32"
 spec:
   ingressClassName: webapprouting.kubernetes.azure.com
   rules:
