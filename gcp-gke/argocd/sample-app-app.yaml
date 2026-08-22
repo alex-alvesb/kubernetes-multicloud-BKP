@@ -13,7 +13,7 @@ spec:
       jsonPointers:
         - /spec/replicas
   source:
-    repoURL: https://github.com/alex-alvesb/kubernetes-multicloud-BKP.git
+    repoURL: https://github.com/alex-alvesb/kubernetes-multicloud.git
     targetRevision: main
     path: gcp-gke/k8s/sample-app
   destination:

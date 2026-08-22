@@ -15,7 +15,7 @@ resource "azurerm_federated_identity_credential" "github_actions" {
   user_assigned_identity_id  = azurerm_user_assigned_identity.github_actions.id
   audience                   = ["api://AzureADTokenExchange"]
   issuer                     = "https://token.actions.githubusercontent.com"
-  subject                    = "repo:alex-alvesb@157150401/kubernetes-multicloud-BKP@1316552753:ref:refs/heads/main"
+  subject                    = "repo:alex-alvesb@157150401/kubernetes-multicloud@1316552753:ref:refs/heads/main"
 }
 
 resource "azurerm_role_assignment" "github_actions_acr_push" {

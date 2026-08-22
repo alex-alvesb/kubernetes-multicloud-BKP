@@ -34,7 +34,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository" = "assertion.repository"
   }
 
-  attribute_condition = "assertion.repository == 'alex-alvesb/kubernetes-multicloud-BKP' && assertion.ref == 'refs/heads/main'"
+  attribute_condition = "assertion.repository == 'alex-alvesb/kubernetes-multicloud' && assertion.ref == 'refs/heads/main'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -44,7 +44,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 resource "google_service_account_iam_member" "github_actions_wif" {
   service_account_id = google_service_account.github_actions.name
   role                = "roles/iam.workloadIdentityUser"
-  member              = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/alex-alvesb/kubernetes-multicloud-BKP"
+  member              = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/alex-alvesb/kubernetes-multicloud"
 }
 
 data "google_compute_default_service_account" "default" {

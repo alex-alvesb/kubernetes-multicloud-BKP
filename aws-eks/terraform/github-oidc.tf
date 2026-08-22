@@ -24,7 +24,7 @@ resource "aws_iam_role" "github_actions" {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:alex-alvesb@157150401/kubernetes-multicloud-BKP@1316552753:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "repo:alex-alvesb@157150401/kubernetes-multicloud@1316552753:ref:refs/heads/main"
         }
       }
     }]

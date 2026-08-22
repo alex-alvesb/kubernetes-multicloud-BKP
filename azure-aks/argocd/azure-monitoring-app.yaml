@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/alex-alvesb/kubernetes-multicloud-BKP.git
+    repoURL: https://github.com/alex-alvesb/kubernetes-multicloud.git
     targetRevision: main
     path: azure-aks/k8s/monitoring
     directory:
