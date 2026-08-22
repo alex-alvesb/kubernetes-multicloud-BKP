@@ -10,7 +10,7 @@ resource "aws_budgets_budget" "monthly_lab_budget" {
     threshold                  = 80
     threshold_type             = "PERCENTAGE"
     notification_type          = "ACTUAL"
-    subscriber_email_addresses = ["alex_alvesb.jr@hotmail.com"]
+    subscriber_email_addresses = [var.alert_email]
   }
 
   notification {
@@ -18,6 +18,6 @@ resource "aws_budgets_budget" "monthly_lab_budget" {
     threshold                  = 100
     threshold_type             = "PERCENTAGE"
     notification_type          = "FORECASTED"
-    subscriber_email_addresses = ["alex_alvesb.jr@hotmail.com"]
+    subscriber_email_addresses = [var.alert_email]
   }
 }
